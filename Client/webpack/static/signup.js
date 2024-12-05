@@ -1,7 +1,7 @@
 // Function to handle signup
 console.log('signup.js loaded');
 
-function handleSignup(event) {
+async function handleSignup(event) {
     console.log('Handling signup');
     event.preventDefault();
 
@@ -24,22 +24,41 @@ function handleSignup(event) {
     }
 
     // Send signup request to background script
-    chrome.runtime.sendMessage({
-        action: 'signup',
-        email: email,
-        name: `${firstName} ${lastName}`,
-        password: password
-    }, response => {
-        if (response.success) {
-            showMessage('Signup successful!', 'success');
-            // Redirect to login page after a short delay
-            setTimeout(() => {
-                window.location.href = './login.html';
-            }, 2000);
-        } else {
-            showMessage('Signup failed: ' + (response.error || 'Unknown error'), 'error');
+    try{
+        const resp = await chrome.runtime.sendMessage({
+            action: 'signup',
+            email, 
+            name: `${firstName} ${lastName}`, 
+            password
+        });
+        console.log('Signup response:', resp);
+        if(resp && resp.success){
+            alert('Signup successful');
+            window.close();
+        }else{
+            alert('Signup failed: ' + (resp ? resp.error : 'Unknown error'));
         }
-    });
+    }
+    catch(err){
+        console.error('Error signing up:', err);
+        alert('Error signing up: ' + err.message);
+    }
+    // chrome.runtime.sendMessage({
+    //     action: 'signup',
+    //     email: email,
+    //     name: `${firstName} ${lastName}`,
+    //     password: password
+    // }, response => {
+    //     if (response.success) {
+    //         showMessage('Signup successful!', 'success');
+    //         // Redirect to login page after a short delay
+    //         setTimeout(() => {
+    //             window.location.href = './login.html';
+    //         }, 2000);
+    //     } else {
+    //         showMessage('Signup failed: ' + (response.error || 'Unknown error'), 'error');
+    //     }
+    // });
 }
 
 // Function to display messages to the user

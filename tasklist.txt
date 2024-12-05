@@ -1,0 +1,56 @@
+ISSUES
+- login/userState
+- extension unresponsive after closing cart
+
+TODO:
+    - order stuff (frontend, extension)
+
+    backend - set tables, getOrders etc apis (done)
+    quotes (done)
+    get user
+
+
+    extension:
+        logged in page 
+        sign out
+
+    dashboard pages:
+        login page (done)
+
+        users
+        userInfo
+
+        orders 
+        orderDetail
+        Quotation
+
+        customers
+        customerDetail
+
+    user dashboard pages:
+        My orders (kinda)
+        same orderdetail with quote 
+        profile page?
+
+timeline
+
+    - orders set on backend + skeleton dashboard pages (abd) DONE
+    - order going from backend -> dashboard (abd) DONE
+
+    - dashboard styling (salar)
+    - quotation entering option in order page (salar)
+
+    - orders going from extension -> backend (abd) DONE
+
+    - FRONTEND:
+        -api integration :
+            - orders page (salar) DONE
+            - order detail page with quote(abd+salar) DONE
+
+        layout:
+            -routes theek of admin and user (abd)
+    -BACKEND:
+        -order info more (abd)
+
+            - user page 
+            - user detail page

@@ -1,3 +1,0 @@
-### Get All Items
-
-GET http://localhost:5000/items HTTP/1.1

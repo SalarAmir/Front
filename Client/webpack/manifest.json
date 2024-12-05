@@ -1,0 +1,37 @@
+{
+    "manifest_version": 3,
+    "name": "Keibo",
+    "version": "1.0",
+    "description": "Your extension description",
+
+    "permissions": ["activeTab", "storage"],
+
+    "host_permissions": ["<all_urls>"],
+
+    "action": {
+        "default_popup": "./static/login.html"
+    },
+
+    "background": {
+        "service_worker": "background.bundle.js"
+    },
+
+    "content_scripts": [
+        {
+        "matches": [
+            "*://*.1688.com/*",
+            "*://*.taobao.com/*",
+            "*://*.tmall.com/*",
+            "*://*.pinduoduo.com/*"
+        ],
+        "js": ["app.bundle.js"]
+        }
+    ],
+
+    "web_accessible_resources": [
+        {
+        "resources": ["toolbar.html", "cart.html"],
+        "matches": ["<all_urls>"]
+        }
+    ]
+}

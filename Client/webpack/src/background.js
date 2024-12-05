@@ -1,186 +1,215 @@
 // Database name and version
+/*
+
+here lies background.js v0.1 ;-;
+              -
+          25-09-2024
+
+
 console.log('Background script loaded.');
 const dbName = 'ExtensionDB';
 const dbVersion = 1;
 
-// Sample users for testing
-const sampleUsers = [
-  { email: 'john@example.com', name: 'John Doe', password: 'password123' },
-  { email: 'jane@example.com', name: 'Jane Smith', password: 'securepass' },
-  { email: 'bob@example.com', name: 'Bob Johnson', password: 'bobpass123' },
-  {email: 'sal@keibo.com', name: 'Salar', password: '123'}
-];
+let serverUrl = 'http://localhost:5000/api/v1';
 
-// Open the database
-function openDB() {
-  return new Promise((resolve, reject) => {
-      console.log('Opening database...');
-      const request = indexedDB.open(dbName, dbVersion);
-
-      request.onerror = event => {
-          console.error('Error opening database:', event.target.error);
-          reject('Error opening database');
-      };
-
-      request.onsuccess = event => {
-          console.log('Database opened successfully');
-          resolve(event.target.result);
-      };
-
-      request.onupgradeneeded = event => {
-          console.log('Upgrading database...');
-          const db = event.target.result;
-
-          // Create an object store for users
-          if (!db.objectStoreNames.contains('users')) {
-              console.log('Creating users object store');
-              const userStore = db.createObjectStore('users', { keyPath: 'email' });
-              userStore.createIndex('name', 'name', { unique: false });
-
-              // Add sample users
-              sampleUsers.forEach(user => {
-                  userStore.add(user);
-              });
-              console.log('Sample users added');
-          }
-
-          // Create an object store for cart
-          if (!db.objectStoreNames.contains('cart')) {
-              console.log('Creating cart object store');
-              db.createObjectStore('cart', { keyPath: 'userEmail' });
-          }
-      };
+function getLocalStorage(key) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get([key], function(result) {
+      console.log(`${key}:`, result[key]);
+      resolve(result[key]);
+    });
   });
 }
 
-// User operations
-const UserDB = {
-  add: (user) => {
-    return new Promise((resolve, reject) => {
-      console.log('Adding user:', user.email);
-      openDB().then(db => {
-        const transaction = db.transaction(['users'], 'readwrite');
-        const store = transaction.objectStore('users');
-        const request = store.add(user);
-
-        request.onerror = event => {
-          console.error('Error adding user:', event.target.error);
-          reject('Error adding user');
-        };
-
-        request.onsuccess = event => {
-          console.log('User added successfully:', user.email);
-          resolve(event.target.result);
-        };
-      }).catch(error => {
-        console.error('Error in add user transaction:', error);
-        reject(error);
-      });
+function setLocalStorage(key, value) {
+  return new Promise((resolve) => {
+    chrome.storage.local.set({[key]: value}, function() {
+      console.log(`${key} set to:`, value);
+      resolve();
     });
+  });
+}
+
+const api = {
+  serverUrl: 'http://localhost:5000/api/v1',
+  //basefunctions:
+  useGet: async (url) => {
+    try {
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      const completeUrl = `${serverUrl}${url}`;
+
+      const response = await fetch(completeUrl, {
+        method: 'GET',
+        headers: headers,
+      });
+      const data = await response.json();
+
+      console.log(
+        "GET",
+        completeUrl,
+        "Response:",
+        data
+      )
+
+      return data;
+    }catch(err){
+      console.error(err);
+    }
   },
 
-  get: (email) => {
-    return new Promise((resolve, reject) => {
-      console.log('Getting user:', email);
-      openDB().then(db => {
-        const transaction = db.transaction(['users'], 'readonly');
-        const store = transaction.objectStore('users');
-        const request = store.get(email);
+  usePost: async (url, body) => {
+    try {
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      const completeUrl = `${serverUrl}${url}`;
 
-        request.onerror = event => {
-          console.error('Error getting user:', event.target.error);
-          reject('Error getting user');
-        };
-
-        request.onsuccess = event => {
-          console.log('User retrieved:', event.target.result ? event.target.result.email : 'Not found');
-          resolve(event.target.result);
-        };
-      }).catch(error => {
-        console.error('Error in get user transaction:', error);
-        reject(error);
+      const response = await fetch(completeUrl, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(body),
       });
-    });
+      const data = await response.json();
+
+      console.log(
+        "POST",
+        completeUrl,
+        "Response:",
+        data
+      )
+
+      return data;
+    }catch(err){
+      console.error(err);
+    }
   },
 
-  update: (user) => {
-    return new Promise((resolve, reject) => {
-      console.log('Updating user:', user.email);
-      openDB().then(db => {
-        const transaction = db.transaction(['users'], 'readwrite');
-        const store = transaction.objectStore('users');
-        const request = store.put(user);
+  //Cart operations
+  cart: {
+    get: async (userEmail) => {
+      const url = `/cart?email=${encodeURIComponent(userEmail)}`;
+      return api.useGet(url);
+    },
+    add: async (userEmail, item) => {
+      const url = `/cart/add?email=${encodeURIComponent(userEmail)}`;
+      return api.usePost(url, item);
+    },
+    remove: async (userEmail, productName) => {
+      const url = `/cart/remove?email=${encodeURIComponent(userEmail)}`;
+      return api.usePost(url, { productName });
+      // return api.usePost(url);
+    },
+  },
+}
 
-        request.onerror = event => {
-          console.error('Error updating user:', event.target.error);
-          reject('Error updating user');
-        };
+// Handle signup
+function handleSignup(request, sendResponse) {
+  console.log('Signup request received:', request.email);
+  
+  fetch(`${serverUrl}/users/signup`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      email: request.email,
+      name: request.name,
+      password: request.password
+    }),
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      console.log('Signup successful:', request.email);
+      sendResponse({ success: true });
+    } else {
+      console.error('Signup failed:', data.error);
+      sendResponse({ success: false, error: data.error });
+    }
+  })
+  .catch(error => {
+    console.error('Signup failed:', error);
+    sendResponse({ success: false, error: error.toString() });
+  });
+}
 
-        request.onsuccess = event => {
-          console.log('User updated successfully:', user.email);
-          resolve(event.target.result);
-        };
-      }).catch(error => {
-        console.error('Error in update user transaction:', error);
-        reject(error);
-      });
-    });
+// Handle login
+async function handleLogin (request, sendResponse) {
+  console.log('Login request received:', request.email);
+  const response = await fetch(`${serverUrl}/users/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      email: request.email,
+      password: request.password
+    }),
+  })
+  const data = await response.json();
+  if (data.success) {
+    const user = data.data.userData
+    console.log('Login successful:', data);
+    const userStore =  {
+      email: user.email,
+      name: user.name
+    }
+    await setLocalStorage('isLoggedIn', true);
+    await setLocalStorage('user', userStore);
+
+    await getLocalStorage('user');
+    sendResponse({success: true, user: userStore});
+    
+    } else {
+      console.log('Login failed:', data.error);
+      sendResponse({success: false, error: data.error});
+    }
+}
+
+// Handle add to cart
+async function handleAddToCart(request, sendResponse) {
+  console.log('Add to cart request received:', request.userEmail);
+  
+  const item = request.item;
+  const userEmail = request.userEmail;
+  try {
+    const items = await api.cart.add(userEmail, item);
+    console.log('Cart updated :', item);
+    sendResponse({ success: true });
   }
-};
-
-// Cart operations
-const CartDB = {
-  get: (userEmail) => {
-    return new Promise((resolve, reject) => {
-      console.log('Getting cart for user:', userEmail);
-      openDB().then(db => {
-        const transaction = db.transaction(['cart'], 'readonly');
-        const store = transaction.objectStore('cart');
-        const request = store.get(userEmail);
-
-        request.onerror = event => {
-          console.error('Error getting cart:', event.target.error);
-          reject('Error getting cart');
-        };
-
-        request.onsuccess = event => {
-          console.log('Cart retrieved for user:', userEmail);
-          resolve(event.target.result ? event.target.result.items : []);
-        };
-      }).catch(error => {
-        console.error('Error in get cart transaction:', error);
-        reject(error);
-      });
-    });
-  },
-
-  update: (userEmail, items) => {
-    return new Promise((resolve, reject) => {
-      console.log('Updating cart for user:', userEmail);
-      openDB().then(db => {
-        const transaction = db.transaction(['cart'], 'readwrite');
-        const store = transaction.objectStore('cart');
-        const request = store.put({ userEmail, items });
-
-        request.onerror = event => {
-          console.error('Error updating cart:', event.target.error);
-          reject('Error updating cart');
-        };
-
-        request.onsuccess = event => {
-          console.log('Cart updated successfully for user:', userEmail);
-          resolve(event.target.result);
-        };
-      }).catch(error => {
-        console.error('Error in update cart transaction:', error);
-        reject(error);
-      });
-    });
+  catch (error) {
+    console.error('Error updating cart:', error);
+    sendResponse({ success: false, error: error.toString() });
   }
-};
 
-// Message listener for various actions
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+}
+
+// Handle remove from cart (new function)
+async function handleRemoveFromCart(request, sendResponse) {
+  console.log('Remove from cart request received:', request.userEmail, request.productName);
+  try {
+    const items = await api.cart.remove(request.userEmail, request.productName);
+    console.log('Item removed from cart successfully', request.productName);
+    sendResponse({ success: true });
+  } catch (error) {
+    console.error('Error removing item from cart:', error);
+    sendResponse({ success: false, error: error.toString() });
+  }
+
+}
+// Handle get cart
+async function handleGetCart(request, sendResponse) {
+  try {
+    const items = await api.cart.get(request.userEmail);
+    console.log('Cart retrieved successfully', items);
+    sendResponse({ success: true, items });
+  } catch (error) {
+    console.error('Error getting cart:', error);
+  }
+}
+chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
   console.log('Message received:', request.action);
 
   switch (request.action) {
@@ -188,10 +217,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       handleSignup(request, sendResponse);
       break;
     case 'login':
-      handleLogin(request, sendResponse);
+      await handleLogin(request, sendResponse);
       break;
     case 'addToCart':
-      handleAddToCart(request, sendResponse);
+      await handleAddToCart(request, sendResponse);
       console.log('add to cart request received:', request.userEmail);
       break;
     case 'removeFromCart':
@@ -210,102 +239,279 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   return true; // Indicates that the response is sent asynchronously
 });
 
-// Handle signup
-function handleSignup(request, sendResponse) {
-  console.log('Signup request received:', request.email);
-  const user = {
-    email: request.email,
-    name: request.name,
-    password: request.password // Note: In a real application, never store passwords in plain text
-  };
+*/
 
-  UserDB.add(user)
-    .then(() => {
-      console.log('Signup successful:', user.email);
-      sendResponse({ success: true });
-    })
-    .catch(error => {
-      console.error('Signup failed:', error);
-      sendResponse({ success: false, error: error.toString() });
-    });
+class API {
+	static serverUrl = 'https://keibo-client-server.vercel.app/api/v1';
+	// static serverUrl = 'http://localhost:5000/api/v1';
+
+	static async get(url) {
+		try {
+			const headers = {
+				'Content-Type': 'application/json',
+			};
+			const completeUrl = `${API.serverUrl}${url}`;
+
+			const response = await fetch(completeUrl, {
+				method: 'GET',
+				headers: headers,
+			});
+			const data = await response.json();
+
+			if(!data.success){
+				console.error("GET", completeUrl, "Error:", data.error);
+				throw new Error(data.error);
+			}
+
+			console.log(
+				"GET",
+				completeUrl,
+				"Response:",
+				data
+			)
+
+			return data;
+		} catch (err) {
+			console.error(err);
+		}
+	}
+
+	static async post(url, body) {
+		try {
+			const headers = {
+				'Content-Type': 'application/json',
+			};
+			const completeUrl = `${API.serverUrl}${url}`;
+
+			const response = await fetch(completeUrl, {
+				method: 'POST',
+				headers: headers,
+				body: JSON.stringify(body),
+			});
+			const data = await response.json();
+
+			console.log(
+				"POST",
+				completeUrl,
+				"Response:",
+				data
+			)
+
+			return data;
+		} catch (err) {
+			console.error(err);
+		}
+	}
 }
 
-// Handle login
-function handleLogin(request, sendResponse) {
-  console.log('Login request received:', request.email);
-  UserDB.get(request.email)
-    .then(user => {
-      if (user && user.password === request.password) { // Note: In a real application, use proper password hashing and comparison
-        console.log('Login successful:', user.email);
-        chrome.storage.local.set({isLoggedIn: true, user: {email: user.email, name: user.name}}, () => {
-          sendResponse({success: true, user: {email: user.email, name: user.name}});
-        });
-      } else {
-        console.log('Login failed: Invalid credentials');
-        sendResponse({success: false, error: 'Invalid credentials'});
-      }
-    })
-    .catch(error => {
-      console.error('Login error:', error);
-      sendResponse({success: false, error: 'An error occurred'});
-    });
+class StorageService {
+	static get(key) {
+		return new Promise((resolve) => {
+			chrome.storage.local.get([key], function (result) {
+				console.log(`${key}:`, result[key]);
+				resolve(result[key]);
+			});
+		});
+	}
+
+	static set(key, value) {
+		return new Promise((resolve) => {
+			chrome.storage.local.set({ [key]: value }, function () {
+				console.log(`${key} set to:`, value);
+				resolve();
+			});
+		});
+	}
 }
 
-// Handle add to cart
-function handleAddToCart(request, sendResponse) {
-  console.log('Add to cart request received:', request.userEmail);
-  CartDB.get(request.userEmail)
-    .then(items => {
-      const existingItemIndex = items.findIndex(item => item.product === request.item.product);
-      if (existingItemIndex !== -1) {
-        // Update quantity if item already exists
-        items[existingItemIndex].quantity += request.item.quantity;
-      } else {
-        // Add new item if it doesn't exist
-        items.push(request.item);
-      }
-      return CartDB.update(request.userEmail, items);
-    })
-    .then(() => {
-      console.log('Cart updated successfully', request.item.product);
-      sendResponse({ success: true });
-    })
-    .catch(error => {
-      console.error('Error updating cart:', error);
-      sendResponse({ success: false, error: error.toString() });
-    });
+class UserService{
+	static async signup(request){
+		// const response = await API.post('/users/signup', { email, name, password });
+		try{
+			const response = await API.post('/user/signup', request)
+			console.log('Signup response:', response);
+			if(response.success){
+				return { success: true, data:true };
+			}
+			else{
+				return { success: false, error: response.error };
+			}
+		}
+		catch(error){
+			console.error('Error signing up:', error);
+			return { success: false, error: error.message };
+		}
+
+	}
+
+	static async login(request){
+		try{
+			const { email, password } = request;
+		
+			const response = await API.post('/user/login', { email, password });
+			console.log('Login response:', response);
+			if(response.success){
+				const user = response.data.userData;
+				const userStore = {
+					id: user.id,
+					email: user.email,
+					name: user.name
+				}
+				await StorageService.set('isLoggedIn', true);
+				await StorageService.set('user', userStore);
+		
+				await StorageService.get('user');
+				// return { success: true, user: userStore };
+				return {success: true, data:userStore};
+			}
+			else{
+				return { success: false, error: response.error };
+			}
+		}
+		catch(error){
+			console.error('Error logging in:', error);
+			return { success: false, error: error.message };
+		}
+	}
+	static async checkLogin(){
+		try{
+			const isLoggedIn = await StorageService.get('isLoggedIn');
+			return { success: true, data: isLoggedIn };
+		}
+		catch(error){
+			console.error('Error checking login:', error);
+			return { success: false, error: error.message };
+		}
+	}
+
+  static async getLoggedInEmail(){
+	try{
+		const user = await StorageService.get('user');
+		return {success: true, data: user.email};
+
+	}
+	catch(error){
+		console.error('Error getting logged in email:', error);
+		return { success: false, error: error.message };
+	}
+  }
+
+  static async logout(){
+	try{
+		await StorageService.set('isLoggedIn', false);
+		await StorageService.set('user', null);
+
+	}
+	catch(error){
+		console.error('Error logging out:', error);
+		return { success: false, error: error.message };
+	}
+  }
 }
 
-// Handle remove from cart (new function)
-function handleRemoveFromCart(request, sendResponse) {
-  console.log('Remove from cart request received:', request.userEmail, request.productName);
-  CartDB.get(request.userEmail)
-    .then(items => {
-      const updatedItems = items.filter(item => item.product !== request.productName);
-      return CartDB.update(request.userEmail, updatedItems);
-    })
-    .then(() => {
-      console.log('Item removed from cart successfully', request.productName);
-      sendResponse({ success: true });
-    })
-    .catch(error => {
-      console.error('Error removing item from cart:', error);
-      sendResponse({ success: false, error: error.toString() });
-    });
+class CartService{
+	static async get(){
+		const user = await StorageService.get('user');
+		console.log('User in get cart:', user);
+		const userEmail = user.email;
+
+		if(!userEmail){
+			throw new Error('User not logged in');
+		}
+
+		const url = `/cart?email=${encodeURIComponent(userEmail)}`;
+		const response = await API.get(url);
+		return {success: true, items: response.data};
+
+
+		// return API.get(url);
+	}
+
+	static async addToCart(request){
+		const user = await StorageService.get('user');
+		const userEmail = user.email;
+
+		if(!userEmail){
+			throw new Error('User not logged in');
+		}
+
+
+		const payload = {
+			product: request.product,
+			price: request.price,
+			imageUrl: request.imageUrl,
+			prodUrl:request.prodUrl
+			// quantity: request.quantity
+		}
+		const url = `/cart/add?email=${encodeURIComponent(userEmail)}`;
+		const response = await API.post(url, payload);
+		return {success: true};
+	}
+
+	static async removeFromCart(request){
+		const user = await StorageService.get('user');
+		const userEmail = user.email;
+
+		if(!userEmail){
+			throw new Error('User not logged in');
+		}
+
+		const payload = {
+			productName: request.productName
+		}
+		const url = `/cart/remove?email=${encodeURIComponent(userEmail)}`;
+		const response = await API.post(url, payload);
+		return {success: true};
+	}
+
+	static async submitOrder(request){
+		const user = await StorageService.get('user');
+		const userEmail = user.email;
+
+		if(!userEmail){
+			throw new Error('User not logged in');
+		}
+
+		const payload = {
+			consignee_info: request.consigneeInfo,
+			shipping_info: request.shippingInfo,
+			delivery_mode: request.deliveryMode
+		}
+		const url = `/orders?email=${encodeURIComponent(userEmail)}`;
+		const response = await API.post(url, payload);
+		return {success: true};
+	}
+	
 }
 
-// Handle get cart
-function handleGetCart(request, sendResponse) {
-  if (request.action === 'getCart') {
-    console.log('Get cart request received:', request.userEmail);
-    CartDB.get(request.userEmail)
-      .then(items => {
-        console.log('Cart retrieved successfully', items);
-        sendResponse({ success: true, items });
-      })
-      .catch(error => {
-        console.error('Error getting cart:', error);
-        sendResponse({ success: false, error });
-      });
-    return true;
-    }}
+const actionToServiceMap = {
+	'signup': UserService.signup,
+	'login': UserService.login,
+	'getLoggedInEmail': UserService.getLoggedInEmail,
+	'checkLogin':UserService.checkLogin,
+	'getCart': CartService.get,
+	'addToCart': CartService.addToCart,
+	'removeFromCart': CartService.removeFromCart,
+	'submitOrder': CartService.submitOrder,
+}
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  	console.log('Message received:', request.action);
+
+	if(!actionToServiceMap[request.action]){
+		console.error('Unknown action:', request.action);
+		sendResponse({ success: false, error: 'Unknown action' });
+		return true;
+	}
+
+	actionToServiceMap[request.action](request)
+	.then(response => {
+		sendResponse({ success: true, data: response });
+	})
+	.catch(error => {
+		console.error('Error:', error);
+		sendResponse({ success: false, error: error.toString() });
+	});
+  	return true;
+	
+});

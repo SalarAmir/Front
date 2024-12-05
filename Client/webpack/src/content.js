@@ -1,4 +1,10 @@
 // Import statements
+/*
+
+Here lies content script V0.1 
+            - 
+        2024-09-23
+
 import toolbarHtml from '../static/toolbar.html';
 import "../static/toolbar.css";
 import cartHtml from '../static/cart.html';
@@ -11,6 +17,26 @@ import "../static/info.css";
 
 // Initialize cart array
 let cart = [];
+let loggedInUser = null
+const userEmail = 'user1@gmail.com';
+
+function getLocalStorage(key) {
+    return new Promise((resolve) => {
+      chrome.storage.local.get([key], function(result) {
+        console.log(`${key}:`, result[key]);
+        resolve(result[key]);
+      });
+    });
+}
+
+async function getUserEmail(){
+    if(loggedInUser){
+        return loggedInUser
+    }
+    loggedInUser = await getLocalStorage('user');
+    return loggedInUser
+}
+
 
 // Function to inject toolbar
 function injectToolbar() {
@@ -92,8 +118,13 @@ function setupEventListeners(pageProduct, pagePrice, imageUrl) {
 }
 
 // Function to add item to cart
-function addToCart(product, price, imageUrl) {
-    const userEmail = 'sal@keibo.com'; // Replace with actual user's email or fetch dynamically
+async function addToCart(product, price, imageUrl) {
+    // const userEmail = 'sal@keibo.com'; // Replace with actual user's email or fetch dynamically
+    const userEmail = await getUserEmail();
+    if(!userEmail){
+        console.error('User email not found in addToCart');
+        return
+    }
     let item;
     let existingItem = cart.find(item => item.product === product);
 
@@ -111,11 +142,12 @@ function addToCart(product, price, imageUrl) {
 
     // Send updated cart to background script
     chrome.runtime.sendMessage({ action: 'addToCart', userEmail, item }, response => {
-        if (response.success) {
-            console.log('Cart updated successfully:', product);
-        } else {
-            console.error('Failed to update cart:', response.error);
-        }
+        // if (response.success) {
+        console.log("response in add to cart:", response);
+        console.log('Cart updated successfully:', product);
+        // } else {
+            // console.error('Failed to update cart:', response.error);
+        // }
     });
 
     updateCartItems();
@@ -164,9 +196,15 @@ function getProductPrice() {
 
 // Function to inject cart
 function injectCart() {
-    const userEmail = 'sal@keibo.com'; // Replace with actual user's email or fetch dynamically
+    // const userEmail = 'sal@keibo.com'; // Replace with actual user's email or fetch dynamically
+    // const userEmail = getUserEmail();
+    if(!userEmail){
+        console.error('User email not found in inject cart');
+        return
+    }
     console.log('Retrieving cart items for user:', userEmail);
     chrome.runtime.sendMessage({ action: 'getCart', userEmail }, response => {
+        console.log('Cart response:', response);
         if (response.success) {
             cart = response.items;
             console.log('Cart items:', cart);
@@ -281,7 +319,13 @@ function removeItem(productName) {
         console.error('Product name not provided');
         return;
     }
-    const userEmail = 'sal@keibo.com'; // Replace with actual user's email or fetch dynamically
+    // const userEmail = 'sal@keibo.com'; // Replace with actual user's email or fetch dynamically
+    // const userEmail = getUserEmail();
+    if(!userEmail){
+        console.error('User email not found in removeItem');
+        return
+    }
+
     chrome.runtime.sendMessage({ action: 'removeFromCart', userEmail, productName }, response => {
         if (response.success) {
             console.log('Product removed from cart:', productName);
@@ -330,6 +374,8 @@ function injectInfo() {
             event.preventDefault();
             // Add your logic to handle the form submission here
             console.log('Form submitted');
+
+            
         });
     } else {
         console.error('Submit button not found');
@@ -349,3 +395,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Make removeItem function globally available
 window.removeItem = removeItem;
+
+*/
+
+import {UI} from "./UI.js";
+import {Auth} from "./Auth.js";
+
+Auth.checkLogin().then((response) => {
+    let loggedIn = response.success;
+    console.log('Logged in:', loggedIn);
+    const ui = new UI();
+    ui.injectToolbar();
+
+})
+// UI.setupToolbarEventListeners();
+//wait for page to load and then inject toolbar
+// document.addEventListener('DOMContentLoaded', () => {
+//     UI.injectToolbar();
+// });

@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="./cart.css">
-  <title>Document</title>
+  <title>Shopping Cart</title>
 </head>
 
 <body>
-  <div id="cart-container" style=>
+  <div id="cart-container">
     <div class="cart">
       <button id="close-cart" class="close-cart">✕</button>
       <h2>Your Cart</h2>
@@ -20,8 +20,8 @@
           <button class="remove-item">✕</button>
           <p class="product-variants">Variants: </p>
           <p class="product-price">¥ 100.00</p>         
-          <input  class="product-quantity" value="0" min="500">Quantity\</input >        
-          
+          <input type="number" class="product-quantity" value="0" min="500">
+          <label for="quantity">Quantity</label>
         </div>
       </div>
       <div class="cart-item">
@@ -32,13 +32,11 @@
           <p class="product-variants">Variants: </p>
           <p class="product-price">¥ 100.00</p> 
           <input type="range" class="product-quantity" value="0" min="500">
-          
         </div>
       </div>
       <p class="total">TOTAL: ¥ 181.00</p>
       <button class="request-order">REQUEST ORDER</button>
     </div>
   </div>
-  
 </body>
 </html>

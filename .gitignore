@@ -1,0 +1,5 @@
+/Server/node_modules
+/Server/.env
+
+/Client/webpack/node_modules
+/Client/webpack/dist
